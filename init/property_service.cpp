@@ -1510,6 +1510,23 @@ static void ProcessBootconfig() {
     });
 }
 
+static void SetLockedBootProps() {
+    static constexpr std::pair<const char*, const char*> kProps[] = {
+            {"ro.boot.flash.locked", "1"},
+            {"ro.boot.vbmeta.device_state", "locked"},
+            {"ro.boot.verifiedbootstate", "green"},
+            {"ro.boot.veritymode", "enforcing"},
+            {"ro.boot.warranty_bit", "0"},
+    };
+
+    for (const auto& [name, value] : kProps) {
+        std::string error;
+        if (PropertySetNoSocket(name, value, &error) != PROP_SUCCESS) {
+            LOG(ERROR) << "Could not set '" << name << "' to '" << value << "': " << error;
+        }
+    }
+}
+
 void PropertyInit() {
     selinux_callback cb;
     cb.func_audit = PropertyAuditCallback;
@@ -1522,6 +1539,10 @@ void PropertyInit() {
     }
     if (!property_info_area.LoadDefaultPath()) {
         LOG(FATAL) << "Failed to load serialized property info file";
+    }
+
+    if (!IsRecoveryMode()) {
+        SetLockedBootProps();
     }
 
     // If arguments are passed both on the command line and in DT,
